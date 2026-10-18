@@ -3,35 +3,17 @@ package com.javaproject.security;
 
 import javax.sql.DataSource;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.provisioning.UserDetailsManager;
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
-
-    private final LoggingAccessDeniedHandler accessDeniedHandler;
-    private final DataSource dataSource;
-    private final BCryptPasswordEncoder passwordEncoder;
-
-    @Autowired
-    public SecurityConfig(
-            LoggingAccessDeniedHandler accessDeniedHandler,
-            DataSource dataSource,
-            @Lazy BCryptPasswordEncoder passwordEncoder) {
-        this.accessDeniedHandler = accessDeniedHandler;
-        this.dataSource = dataSource;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -39,27 +21,65 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JdbcUserDetailsManager jdbcUserDetailsManager() {
-        JdbcUserDetailsManager manager = new JdbcUserDetailsManager();
-        manager.setDataSource(dataSource);
+    public JdbcUserDetailsManager jdbcUserDetailsManager(
+            DataSource dataSource,
+            BCryptPasswordEncoder passwordEncoder) {
+
+        JdbcUserDetailsManager manager =
+                new JdbcUserDetailsManager(dataSource);
+
+        manager.setEnableAuthorities(true);
+
+        if (!manager.userExists("bugs")) {
+            UserDetails bugs = User.withUsername("bugs")
+                    .password(passwordEncoder.encode("bunny"))
+                    .roles("USER")
+                    .build();
+
+            manager.createUser(bugs);
+        }
+
+        if (!manager.userExists("daffy")) {
+            UserDetails daffy = User.withUsername("daffy")
+                    .password(passwordEncoder.encode("duck"))
+                    .roles("USER", "MANAGER")
+                    .build();
+
+            manager.createUser(daffy);
+        }
+
         return manager;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            LoggingAccessDeniedHandler accessDeniedHandler)
             throws Exception {
 
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/user/**").hasAnyRole("USER", "MANAGER")
-                .requestMatchers("/secured/**").hasAnyRole("USER", "MANAGER")
-                .requestMatchers("/manager/**").hasRole("MANAGER")
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/", "/**").permitAll()
+                .requestMatchers(
+                    "/h2-console/**"
+                ).permitAll()
+                .requestMatchers(
+                    "/user/**"
+                ).hasAnyRole("USER", "MANAGER")
+                .requestMatchers(
+                    "/secured/**"
+                ).hasAnyRole("USER", "MANAGER")
+                .requestMatchers(
+                    "/manager/**"
+                ).hasRole("MANAGER")
+                .requestMatchers(
+                    "/", "/login", "/css/**", "/js/**",
+                    "/images/**", "/webjars/**"
+                ).permitAll()
+                .anyRequest().permitAll()
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/secured")
+                .defaultSuccessUrl("/secured", true)
                 .permitAll()
             )
             .logout(logout -> logout
@@ -76,31 +96,5 @@ public class SecurityConfig {
             );
 
         return http.build();
-    }
-
-    @Bean
-    public UserDetailsManager configureUsers() {
-        JdbcUserDetailsManager manager = jdbcUserDetailsManager();
-
-        manager.setDataSource(dataSource);
-        
-
-        if (!manager.userExists("bugs")) {
-            UserDetails bugs = User.withUsername("bugs")
-                .password(passwordEncoder.encode("bunny"))
-                .roles("USER")
-                .build();
-            manager.createUser(bugs);
-        }
-
-        if (!manager.userExists("daffy")) {
-            UserDetails daffy = User.withUsername("daffy")
-                .password(passwordEncoder.encode("duck"))
-                .roles("USER", "MANAGER")
-                .build();
-            manager.createUser(daffy);
-        }
-
-        return manager;
     }
 }
