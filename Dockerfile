@@ -1,28 +1,15 @@
-# ===== Build Stage =====
-FROM maven:3.9.9-eclipse-temurin-17 AS build
-WORKDIR /app
-# rrr
-# Copy pom.xml first to leverage Docker layer caching
-COPY pom.xml .
+# Java 21 runtime image
+FROM eclipse-temurin:21-jre
 
-# Pre-download dependencies (faster rebuilds)
-RUN mvn -B -q -DskipTests dependency:go-offline
-
-# Copy project source
-COPY src ./src
-
-# Build the JAR (skip tests for faster build)
-RUN mvn clean package -DskipTests
-
-# ===== Runtime Stage =====
-FROM eclipse-temurin:17-jre-alpine
+# Application working directory
 WORKDIR /app
 
-# Copy built jar from build stage
-COPY --from=build /app/target/*.jar app.jar
+# Copy Spring Boot executable JAR
+COPY target/database_service_project-0.0.5-SNAPSHOT.jar app.jar
 
-# Expose app port
+# Application port
 EXPOSE 8080
 
-# Run the app
+# Start Spring Boot application
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
