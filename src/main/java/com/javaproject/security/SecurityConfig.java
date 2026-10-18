@@ -83,7 +83,7 @@ public class SecurityConfig {
         JdbcUserDetailsManager manager = jdbcUserDetailsManager();
 
         manager.setDataSource(dataSource);
-        manager.setPasswordEncoder(passwordEncoder);
+        
 
         if (!manager.userExists("bugs")) {
             UserDetails bugs = User.withUsername("bugs")
