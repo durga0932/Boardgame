@@ -2,9 +2,9 @@ package com.javaproject.security;
 
 import java.io.IOException;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import javax.jakarta.ServletException;
+import javax.jakarta.http.HttpServletRequest;
+import javax.jakarta.http.HttpServletResponse;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
